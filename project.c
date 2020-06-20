@@ -128,9 +128,9 @@ void *runSocket(void *vargp) {
     
     if(strncmp(requestMethod, METHOD_GET, 3) == 0) {
         
-        sprintf(parameters,"%s",requestUrl);
-        sprintf(additionalLog," > GET %s\n",requestUrl);
-        strcpy(buf,requestUrl);
+        sprintf(parameters, "%s", requestUrl);
+        sprintf(additionalLog, " > GET %s\n",requestUrl);
+        strcpy(buf, requestUrl);
         strcat(log, additionalLog);
         //printf(" > %s %s\n",t1,t2);
         strcpy(requestMethod,requestUrl);
@@ -154,43 +154,42 @@ void *runSocket(void *vargp) {
             temp=strtok(NULL,"^]");
         
         if(temp != NULL)
-            sprintf(additionalLog,"[SRV connected to %s:%d]\n", requestUrl, port);
+            sprintf(additionalLog, "[SRV connected to %s:%d]\n", requestUrl, port);
         else
-            sprintf(additionalLog,"[SRV connected to %s:%d]\n", log4, port);
+            sprintf(additionalLog, "[SRV connected to %s:%d]\n", log4, port);
         
         
         strcat(log, additionalLog);
-        sprintf(additionalLog,"%scomp is %d mt is %d\n",MESSAGE_PROXTY_TO_SERVER, enableComppresion, enableMultiThreading);
+        sprintf(additionalLog, "%scomp is %d mt is %d\n", MESSAGE_PROXTY_TO_SERVER, enableComppresion, enableMultiThreading);
         strcat(log, additionalLog);
         
-        bzero((char*)&host_addr,sizeof(host_addr));
-        host_addr.sin_port=htons(port);
-        host_addr.sin_family=AF_INET;
-        bcopy((char*)host->h_addr,(char*)&host_addr.sin_addr.s_addr,host->h_length);
+        bzero((char*)&host_addr, sizeof(host_addr));
+        host_addr.sin_port = htons(port);
+        host_addr.sin_family = AF_INET;
+        bcopy((char*)host -> h_addr, (char*)&host_addr.sin_addr.s_addr, host -> h_length);
         
-        server_sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-        proxy_sock=connect(server_sock,(struct sockaddr*)&host_addr,sizeof(struct sockaddr));
+        server_sock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+        proxy_sock = connect(server_sock, (struct sockaddr*)&host_addr, sizeof(struct sockaddr));
         
-        if(proxy_sock<0)
+        if(proxy_sock < 0)
             perror("Error in connecting to remote server");
         
-        bzero((char*)buffer,sizeof(buffer));
+        bzero((char*)buffer, sizeof(buffer));
         if(enableComppresion == false) {
             if(temp!=NULL)
-                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",temp,t3,requestUrl);
+                sprintf(buffer, "GET /%s %s\r\nHost: %s\r\nConnection: Close\r\n\r\n", temp,t3, requestUrl);
             else
-                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",t3,requestUrl);
+                sprintf(buffer, "GET / %s\r\nHost: %s\r\nConnection: Close\r\n\r\n", t3, requestUrl);
         } else {
-            if(temp!=NULL)
-                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",temp,t3,requestUrl);
+            if(temp != NULL)
+                sprintf(buffer, "GET /%s %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",temp,t3,requestUrl);
             else
-                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",t3,requestUrl);
+                sprintf(buffer, "GET / %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n", t3, requestUrl);
         }
         
-        
         n = send(server_sock, buffer, strlen(buffer), 0);
-        sprintf(additionalLog," > GET %s\n",buf);
-        strcat(log,additionalLog);
+        sprintf(additionalLog, " > GET %s\n", buf);
+        strcat(log, additionalLog);
         
         if(n < 0)
             perror("error");
@@ -243,26 +242,26 @@ void *runSocket(void *vargp) {
                     if(c != NULL) {
                         c=strtok(NULL," \t\r\n");
                         
-                        strcpy(length,c);
-                        strcat(log,length);
-                        strcat(log,"bytes\n");
-                        strcat(type," ");
-                        strcat(type,length);
-                        strcat(type,"bytes");
+                        strcpy(length, c);
+                        strcat(log, length);
+                        strcat(log, "bytes\n");
+                        strcat(type, " ");
+                        strcat(type, length);
+                        strcat(type, "bytes");
                     }
                 } else {
-                    if(strncmp(buffer,"HTTP/1.1", 8) == 0) {
+                    if(strncmp(buffer, "HTTP/1.1", 8) == 0) {
                         
-                        strcpy(log4,buffer);
-                        strcpy(buf,buffer);
+                        strcpy(log4, buffer);
+                        strcpy(buf, buffer);
                         strcat(log, MESSAGE_SERVER_TO_PROXY);
-                        a=strtok(log4,"\r\n");
-                        b=strtok(a," \t");
-                        b=strtok(NULL,"\r\n");
-                        sprintf(log4," > %s\n",b);
-                        strcat(log,log4);
+                        a = strtok(log4, "\r\n");
+                        b = strtok(a, " \t");
+                        b = strtok(NULL, "\r\n");
+                        sprintf(log4, " > %s\n",b);
+                        strcat(log, log4);
                         
-                        a=strtok(buf,"\r\n");
+                        a = strtok(buf, "\r\n");
                         
                         while(strncmp(a, CONTENT_TYPE, 12) != 0) {
                             
@@ -274,23 +273,23 @@ void *runSocket(void *vargp) {
                             }
                         }
                         
-                        b=strtok(a," ;\n\t");
-                        b=strtok(NULL," \t;");
-                        strcpy(type,b);
+                        b=strtok(a, " ;\n\t");
+                        b=strtok(NULL, " \t;");
+                        strcpy(type, b);
                         
-                        sprintf(additionalLog," > %s ",b);
-                        strcat(log,additionalLog);
+                        sprintf(additionalLog, " > %s ",b);
+                        strcat(log, additionalLog);
                         
-                        c=strtok(length," \t\n");
+                        c=strtok(length, " \t\n");
                         if(c != NULL) {
-                            c=strtok(NULL," \t\r\n");
+                            c=strtok(NULL, " \t\r\n");
                             
-                            strcpy(length,c);
-                            strcat(log,length);
-                            strcat(log,"bytes\n");
-                            strcat(type," ");
-                            strcat(type,length);
-                            strcat(type,"bytes");
+                            strcpy(length, c);
+                            strcat(log, length);
+                            strcat(log, "bytes\n");
+                            strcat(type, " ");
+                            strcat(type, length);
+                            strcat(type, "bytes");
                         }
                     }
                 }
@@ -298,10 +297,10 @@ void *runSocket(void *vargp) {
                     
                     if(strncmp(buffer, SERVER_RESPONSE_OK, 15) == 0) {
                         strcpy(log3, MESSAGE_PROXTY_TO_CLIENT);
-                        strcat(log3," > 200 OK\n");
+                        strcat(log3, " > 200 OK\n");
                         
-                        sprintf(additionalLog," > %s ",type);
-                        strcat(log3,additionalLog);
+                        sprintf(additionalLog," > %s ", type);
+                        strcat(log3, additionalLog);
                         tog2 = 1;
                     }
                     if(strncmp(buffer, "HTTP/1.1", 8) == 0 && strncmp(buffer, SERVER_RESPONSE_OK, 15) != 0) {
@@ -312,7 +311,7 @@ void *runSocket(void *vargp) {
                     }
                 }
                 
-                if(n>0) {
+                if(n > 0) {
                     
                     if(showPopup == 5) {
                         showPopup = false;
@@ -320,14 +319,14 @@ void *runSocket(void *vargp) {
                         strcpy(buffer, SERVER_RESPONSE_NOT_FOUND);
                     }
                     if(startPopup == 1) {
-                        send(client_sock,mesg,strlen(mesg),0);
-                        parameter=strstr(buffer,"\r\n\r\n"); //뒤에 오는 버퍼들은 \r\n\r\n으로 잘라 뒤에 보내줌
+                        send(client_sock,mesg, strlen(mesg), 0);
+                        parameter=strstr(buffer, "\r\n\r\n"); //뒤에 오는 버퍼들은 \r\n\r\n으로 잘라 뒤에 보내줌
                         // 이미 mesg에서 헤더파일 선언
-                        sprintf(buffer,"%s",parameter);
+                        sprintf(buffer, "%s", parameter);
                         
-                        startPopup=-1;
+                        startPopup = -1;
                     }
-                    send(client_sock,buffer,n,0);
+                    send(client_sock, buffer, n, 0);
                 }
                 
                 
@@ -336,41 +335,41 @@ void *runSocket(void *vargp) {
             if(c == NULL) {
                 
                 file_size -= 4;
-                sprintf(additionalLog,"%ld",file_size);
+                sprintf(additionalLog, "%ld", file_size);
                 
-                strcat(log,additionalLog);
-                strcat(log,"bytes");
-                strcat(log,"\n");
+                strcat(log, additionalLog);
+                strcat(log, "bytes");
+                strcat(log, "\n");
                 
-                strcat(log3,additionalLog);
-                strcat(log3,"bytes\n");
-                strcat(log,log3);
+                strcat(log3, additionalLog);
+                strcat(log3, "bytes\n");
+                strcat(log, log3);
             } else {
-                strcat(log,log3);
-                strcat(log,"\n");
+                strcat(log, log3);
+                strcat(log, "\n");
             }
         }
     }
     else if(strncmp(requestMethod, METHOD_CONNECT, 7) == 0) {
         //Connect Method
         
-        strcpy(log4,buffer);
-        a=strtok(log4,"\r\n");
-        strcat(log,a);
-        strcat(log,"\n");
+        strcpy(log4, buffer);
+        a = strtok(log4, "\r\n");
+        strcat(log, a);
+        strcat(log, "\n");
         
-        a=strtok(requestUrl,":");
-        b=strtok(NULL," \t");
-        sscanf(b,"%d",&httpsPortNumber);
+        a = strtok(requestUrl, ":");
+        b = strtok(NULL, " \t");
+        sscanf(b, "%d", &httpsPortNumber);
         
-        host=gethostbyname(a);
-        bzero((char*)&host_addr,sizeof(host_addr));
-        host_addr.sin_port=htons(httpsPortNumber);
-        host_addr.sin_family=AF_INET;
-        bcopy((char*)host->h_addr,(char*)&host_addr.sin_addr.s_addr,host->h_length);
+        host = gethostbyname(a);
+        bzero((char*)&host_addr, sizeof(host_addr));
+        host_addr.sin_port=  htons(httpsPortNumber);
+        host_addr.sin_family = AF_INET;
+        bcopy((char*)host -> h_addr, (char*)&host_addr.sin_addr.s_addr, host -> h_length);
         
-        server_sock=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-        proxy_sock=connect(server_sock,(struct sockaddr*)&host_addr,sizeof(struct sockaddr));
+        server_sock=socket(AF_INET, SOCK_STREAM,IPPROTO_TCP);
+        proxy_sock=connect(server_sock, (struct sockaddr*)&host_addr, sizeof(struct sockaddr));
         
         
         if(proxy_sock<0) {
@@ -398,23 +397,23 @@ void *runSocket(void *vargp) {
             maxp1 = server_sock + 1;
         
         while(r >= 0) {
-            FD_ZERO( &fdset );
-            FD_SET( client_sock, &fdset );
-            FD_SET(server_sock, &fdset );
+            FD_ZERO(&fdset);
+            FD_SET(client_sock, &fdset);
+            FD_SET(server_sock, &fdset);
             r = select( maxp1, &fdset, (fd_set*) 0, (fd_set*) 0, NULL);
             
-            if ( r == 0 ) {
+            if(r == 0) {
                 // Do nothing
             }
-            else if ( FD_ISSET( client_sock, &fdset ) ) {
-                r = recv( client_sock, buf, sizeof( buf ), 0);
+            else if(FD_ISSET( client_sock, &fdset )) {
+                r = recv(client_sock, buf, sizeof(buf), 0);
                 if ( r <= 0 )
                     break;
-                r = send( server_sock, buf, r, 0);
+                r = send(server_sock, buf, r, 0);
                 if ( r <= 0 )
                     break;
             }
-            else if ( FD_ISSET( server_sock, &fdset ) ) {
+            else if(FD_ISSET(server_sock, &fdset )) {
                 r = recv( server_sock, buf, sizeof( buf ), 0);
                 if ( r <= 0 )
                     break;
@@ -429,12 +428,12 @@ void *runSocket(void *vargp) {
         }
     }
     else {
-        strcat(log,requestMethod);
-        strcat(log," ");
-        strcat(log,requestUrl);
-        strcat(log,"\n");
-        strcat(log,"ANOTHER METHOD IS NOT IMPLEMENTED\n");
-        send(client_sock,"400: BAD REQUEST\n", 17, 0);
+        strcat(log, requestMethod);
+        strcat(log, " ");
+        strcat(log, requestUrl);
+        strcat(log, "\n");
+        strcat(log, "ANOTHER METHOD IS NOT IMPLEMENTED\n");
+        send(client_sock, "400: BAD REQUEST\n", 17, 0);
     }
     
     close(server_sock);
@@ -443,14 +442,14 @@ void *runSocket(void *vargp) {
     strcat(log, SERVER_DISCONNECTED);
     close(sock);
     
-    strcat(log,"-------------------------\n\n\n");
-    printf("\n%s\n",log);
+    strcat(log, "-------------------------\n\n\n");
+    printf("\n%s\n", log);
     
     exit(0);
     return NULL;
 }
 
-int main(int argc,char* argv[]) {
+int main(int argc, char* argv[]) {
     
     pthread_t tid;
     

@@ -10,29 +10,54 @@
 #include<netdb.h>
 #include<errno.h>
 
+// Added boolean type
+typedef int bool;
+enum { false, true };
+
+const char* CONTENT_TYPE = "Content-Type";
+const char* CONTENT_LENGTH = "Content-Length";
+
+const char* METHOD_POST = "POST";
+const char* METHOD_GET = "GET";
+const char* METHOD_CONNECT = "CONNECT";
+
+
+const char* SERVER_RESPONSE_OK = "HTTP/1.1 200 OK";
+const char* SERVER_RESPONSE_NOT_FOUND = "HTTP/1.1 404 NOT FOUND\r\n\r\n";
+
+const char* MESSAGE_PROXTY_TO_CLIENT = "[CLI <== PRX --- SRV]\n";
+const char* MESSAGE_PROXTY_TO_SERVER = "[CLI --- PRX ==> SRV]\n";
+const char* MESSAGE_CLIENT_TO_PROXY = "[CLI ==> PRX --- SRV]\n";
+const char* MESSAGE_SERVER_TO_PROXY = "[CLI --- PRX <== SRV]\n";
+
+const char* CLIENT_DISCONNECTED = "[CLI disconnected]\n";
+const char* SERVER_DISCONNECTED = "[SRV disconnected]\n";
 
 char *a, *b, *c;
 char type[100];
 char length[100];
 
-char *data, *que, *buff;
-char logo[99999]="";
+char *data, *parameter, *buff;
+char parameters[99999] = "";
 
-char log3[99999]="[CLI <== PRX --- SRV]\n";
-char log4[99999]="";
-int tog = -1, tog2 = -1, pop =- 1;
-int co = 0;
-int mt =- 1;
+char log3[99999] = "[CLI <== PRX --- SRV]\n";
+char log4[99999] = "";
+
+int tog = -1, tog2 = -1;
+int packetCount = 0;
 int k = 0;
-int logoo =- 1;
-int popup =- 1;
-int zip =- 1;
-int ad_block =- 1;
 long cl=0;
 
-int httpsPortNumber = 443;
+bool startPopup = false;
+bool blockAD = false;
+bool enableMultiThreading = false;
+bool showPopup = false;
+bool enableComppresion = false;
 
-char *mesg = "HTTP/1.1 200 OK\r\nContent-type:text/html;\r\nConnection: close\r\n\r\n<html><script type=\"text/javascript\">alert(\'this site is hacked\');</script></html>";
+int httpsPortNumber = 443;
+int httpPortNumber = 80;
+
+char *mesg = "HTTP/1.1 200 OK\r\nContent-type:text/html;\r\nConnection: close\r\n\r\n<html><script type=\"text/javascript\">alert(\'This site is hacked\');</script></html>";
 
 struct sockaddr_in addr_in, cli_addr, serv_addr;
 struct hostent* host;
@@ -53,14 +78,14 @@ struct serverInfo {
 // A thread for each client request
 void *runSocket(void *vargp) {
     
-    char log[99999]="";
-    char log2[99999]="";
+    char log[99999] = "";
+    char additionalLog[99999] = "";
     
     struct serverInfo *info = (struct serverInfo *)vargp;
-    client_sock=info->client_fd;
+    client_sock = info -> client_fd;
     
-    sprintf(log, "-------------\n%d\n[CLI connected to  %s: %s\n",co,info->ip,info->port);
-    strcat(log, "[CLI ==> PRX --- SRV]\n");
+    sprintf(log, "-------------\n%d\n[CLI connected to  %s: %s\n", packetCount, info -> ip, info -> port);
+    strcat(log, MESSAGE_CLIENT_TO_PROXY);
     
     struct sockaddr_in host_addr;
     int port = 0;
@@ -68,93 +93,75 @@ void *runSocket(void *vargp) {
     int n;
     
     char* temp = NULL;
-    char buffer[99999], t1[99999], t2[99999], t3[99999], buf[99999];
+    char buffer[99999], requestMethod[99999], requestUrl[99999], t3[99999], buf[99999];
+    
     bzero((char*)buffer,99999);
     
     // receive from client socket
     recv(client_sock, buffer, 99999, 0);
     
-    sscanf(buffer,"%s %s %s", t1, t2, t3);
+    sscanf(buffer,"%s %s %s", requestMethod, requestUrl, t3);
     
-    sprintf(logo, "%s", t2);
+    sprintf(parameters, "%s", requestUrl);
     
     // check parameters
-    que = strtok(logo, "?");
-    que = strtok(NULL, "?\t\n"); //t2는 get뒤에 오는 사용자가 요청한 url
+    parameter = strtok(parameters, "?");
+    parameter = strtok(NULL, "?\t\n");
     
-    if(que != NULL) {
-        
-        if(strncmp(que, "start_adblock", 13) == 0) {
-            ad_block=1;
+    if(parameter != NULL) {
+        if(strncmp(parameter, "start_adblock", 13) == 0) {
+            blockAD = true;
         }
-        
-        if(strncmp(que, "start_popup", 11) == 0) {
-            pop=1;
+        if(strncmp(parameter, "start_popup", 11) == 0) {
+            startPopup = true;
         }
-        
-        if(strncmp(que, "stop_popup", 10) == 0) {
-            pop=-1;
-        }
-        
-        if(strncmp(que, "logo", 4) == 0) {
-            logoo = 1;
+        if(strncmp(parameter, "stop_popup", 10) == 0) {
+            startPopup = true;
         }
     }
     
-    if(popup != 1) {
-        if(strstr(logo,"ad") != NULL && ad_block == 1) {
+    if(showPopup == false) {
+        if(strstr(parameters,"ad") != NULL && blockAD == true) {
             strcat(log,"\nPopup found!\n");
         }
     }
     
-    if(strncmp(t1,"GET",3) == 0) {
+    if(strncmp(requestMethod, METHOD_GET, 3) == 0) {
         
-        sprintf(logo,"%s",t2);
-        sprintf(log2," > GET %s\n",t2);
-        strcpy(buf,t2);
-        strcat(log,log2);
+        sprintf(parameters,"%s",requestUrl);
+        sprintf(additionalLog," > GET %s\n",requestUrl);
+        strcpy(buf,requestUrl);
+        strcat(log, additionalLog);
         //printf(" > %s %s\n",t1,t2);
-        strcpy(t1,t2);
+        strcpy(requestMethod,requestUrl);
         
         
+        if(strncmp(requestUrl, "http", 4) == 0)
+            temp=strtok(requestUrl, "//");
         
+        port = httpPortNumber;
+        temp = strtok(NULL, "/");
         
-        if(strncmp(t2,"http",4)==0)
-            temp=strtok(t2,"//");
+        sprintf(requestUrl,"%s", temp);
+        strcpy(log4, requestUrl);
         
-        port=80;
+        host = gethostbyname(requestUrl);
         
+        strcat(requestMethod, "^]");
+        temp=strtok(requestMethod, "//");
         temp=strtok(NULL,"/");
-        
-        
-        
-        
-        
-        
-        
-        sprintf(t2,"%s",temp);
-        strcpy(log4,t2);
-        
-        
-        host=gethostbyname(t2);
-        
-        
-        
-        strcat(t1,"^]");
-        temp=strtok(t1,"//");
-        temp=strtok(NULL,"/");
-        if(temp!=NULL)
+        if(temp != NULL)
             temp=strtok(NULL,"^]");
         
-        if(temp!=NULL)
-            sprintf(log2,"[SRV connected to %s:%d]\n",t2,port);
+        if(temp != NULL)
+            sprintf(additionalLog,"[SRV connected to %s:%d]\n", requestUrl, port);
         else
-            sprintf(log2,"[SRV connected to %s:%d]\n",log4,port);
+            sprintf(additionalLog,"[SRV connected to %s:%d]\n", log4, port);
         
         
-        strcat(log,log2);
-        sprintf(log2,"[CLI --- PRX ==> SRV]\ncomp is %d mt is %d\n",zip,mt);
-        strcat(log,log2);
+        strcat(log, additionalLog);
+        sprintf(additionalLog,"%scomp is %d mt is %d\n",MESSAGE_PROXTY_TO_SERVER, enableComppresion, enableMultiThreading);
+        strcat(log, additionalLog);
         
         bzero((char*)&host_addr,sizeof(host_addr));
         host_addr.sin_port=htons(port);
@@ -168,91 +175,72 @@ void *runSocket(void *vargp) {
             perror("Error in connecting to remote server");
         
         bzero((char*)buffer,sizeof(buffer));
-        if(zip!=1)
-        {
+        if(enableComppresion == false) {
             if(temp!=NULL)
-                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",temp,t3,t2);
+                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",temp,t3,requestUrl);
             else
-                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",t3,t2);
+                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\n\r\n",t3,requestUrl);
+        } else {
+            if(temp!=NULL)
+                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",temp,t3,requestUrl);
+            else
+                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",t3,requestUrl);
         }
-        else
-        {
-            if(temp!=NULL)
-                sprintf(buffer,"GET /%s %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",temp,t3,t2); //gzip방식을 사용하기 위한 헤더파일의 변경 부분
-            else
-                sprintf(buffer,"GET / %s\r\nHost: %s\r\nConnection: Close\r\nAccept-Encoding: gzip\r\n\r\n",t3,t2);
-        } // zip=1인경우 헤더파일에 accept-encoding을 추가
         
         
-        n=send(server_sock,buffer,strlen(buffer),0);
-        sprintf(log2," > GET %s\n",buf);
-        strcat(log,log2);
-        if(n<0)
+        n = send(server_sock, buffer, strlen(buffer), 0);
+        sprintf(additionalLog," > GET %s\n",buf);
+        strcat(log,additionalLog);
+        
+        if(n < 0)
             perror("error");
-        else{
+        else {
             
-            tog2=0;
+            tog2 = 0;
             long file_size=0;
+            
             do {
-                bzero((char*)buffer,99999);
-                n=recv(server_sock,buffer,99999,0);
-                sprintf(buf,"%s",buffer);
-                data=strstr(buffer,"\r\n\r\n");
-                if(data==NULL)
-                    file_size+=strlen(buffer);
+                bzero((char*)buffer, 99999);
+                n = recv(server_sock, buffer, 99999, 0);
+                sprintf(buf, "%s", buffer);
+                
+                // file size
+                data = strstr(buffer, "\r\n\r\n");
+                if(data == NULL)
+                    file_size += strlen(buffer);
                 else
-                    file_size+=strlen(data);
+                    file_size += strlen(data);
                 
-                
-                if(strncmp(buffer,"HTTP/1.1 200 OK",15)==0) {
+                if(strncmp(buffer, SERVER_RESPONSE_OK, 15)==0) {
                     
-                    strcat(log,"[CLI --- PRX <== SRV]\n");
-                    sprintf(log2," > 200 OK\n");
-                    
-                    strcat(log,log2);
+                    strcat(log, MESSAGE_SERVER_TO_PROXY);
+                    sprintf(additionalLog," > 200 OK\n");
+                    strcat(log,additionalLog);
                     
                     a=strtok(buf,"\r\n");
-                    k=0;
-                    while(strncmp(a,"Content-Type",12)!=0)
-                    {
-                        
+                    k = 0;
+                    while(strncmp(a, CONTENT_TYPE, 12) != 0) {
                         
                         a=strtok(NULL,"\r\n");
                         if(a==NULL) break;
-                        if(strncmp(a,"Content-Length",14)==0)
-                        {
-                            
+                        if(strncmp(a, CONTENT_LENGTH, 14) == 0) {
                             strcpy(length,a);
-                            
                         }
-                        
-                        
-                        
-                        
                     }
                     
                     b=strtok(a," ;\n\t");
                     b=strtok(NULL," \t;");
                     strcpy(type,b);
                     
-                    
-                    if(pop==1&&strncmp(type,"text/html",9)==0)
-                    {
-                        
-                        
+                    if(startPopup==1&&strncmp(type, "text/html", 9)==0) {
                         strcat(log,"\npop is loaded\n");
-                        
-                        
-                        
                     }
                     
+                    sprintf(additionalLog," > %s ",b);
+                    strcat(log,additionalLog);
                     
-                    sprintf(log2," > %s ",b);
-                    strcat(log,log2);
-                    
-                    c=strtok(length," \t\n");
-                    if(c!=NULL)
-                    {
+                    c = strtok(length," \t\n");
+                    if(c != NULL) {
                         c=strtok(NULL," \t\r\n");
                         
                         strcpy(length,c);
@@ -262,18 +250,12 @@ void *runSocket(void *vargp) {
                         strcat(type,length);
                         strcat(type,"bytes");
                     }
-                    
-                    
-                    
-                }
-                else
-                {
-                    if(strncmp(buffer,"HTTP/1.1",8)==0)
-                    {
+                } else {
+                    if(strncmp(buffer,"HTTP/1.1", 8) == 0) {
                         
                         strcpy(log4,buffer);
                         strcpy(buf,buffer);
-                        strcat(log,"[CLI --- PRX <== SRV]\n");
+                        strcat(log, MESSAGE_SERVER_TO_PROXY);
                         a=strtok(log4,"\r\n");
                         b=strtok(a," \t");
                         b=strtok(NULL,"\r\n");
@@ -282,35 +264,25 @@ void *runSocket(void *vargp) {
                         
                         a=strtok(buf,"\r\n");
                         
-                        while(strncmp(a,"Content-Type",12)!=0)
-                        {
-                            
+                        while(strncmp(a, CONTENT_TYPE, 12) != 0) {
                             
                             a=strtok(NULL,"\r\n");
-                            if(a==NULL) break;
-                            if(strncmp(a,"Content-Length",14)==0)
-                            {
-                                
-                                strcpy(length,a);
-                                
-                                
-                                
-                            }
+                            if(a == NULL) break;
                             
+                            if(strncmp(a, CONTENT_LENGTH, 14) == 0) {
+                                strcpy(length,a);
+                            }
                         }
                         
                         b=strtok(a," ;\n\t");
                         b=strtok(NULL," \t;");
                         strcpy(type,b);
                         
-                        sprintf(log2," > %s ",b);
-                        strcat(log,log2);
-                        
-                        
+                        sprintf(additionalLog," > %s ",b);
+                        strcat(log,additionalLog);
                         
                         c=strtok(length," \t\n");
-                        if(c!=NULL)
-                        {
+                        if(c != NULL) {
                             c=strtok(NULL," \t\r\n");
                             
                             strcpy(length,c);
@@ -319,120 +291,75 @@ void *runSocket(void *vargp) {
                             strcat(type," ");
                             strcat(type,length);
                             strcat(type,"bytes");
-                            
                         }
-                        
-                        
-                        
-                        
-                        
-                        
                     }
-                    
-                    
-                    
                 }
-                if(tog2==0)
-                {
+                if(tog2 == 0) {
                     
-                    
-                    if(strncmp(buffer,"HTTP/1.1 200 OK",15)==0)
-                    {
-                        strcpy(log3,"[CLI <== PRX --- SRV]\n");
+                    if(strncmp(buffer, SERVER_RESPONSE_OK, 15) == 0) {
+                        strcpy(log3, MESSAGE_PROXTY_TO_CLIENT);
                         strcat(log3," > 200 OK\n");
                         
-                        
-                        
-                        sprintf(log2," > %s ",type);
-                        strcat(log3,log2);
-                        tog2=1;
+                        sprintf(additionalLog," > %s ",type);
+                        strcat(log3,additionalLog);
+                        tog2 = 1;
                     }
-                    if(strncmp(buffer,"HTTP/1.1",8)==0&&strncmp(buffer,"HTTP/1.1 200 OK",15)!=0)
-                    {
-                        strcpy(log3,"[CLI <== PRX --- SRV]\n");
-                        strcat(log3,log4);
-                        strcat(log3,log2);
-                        
-                        tog2=1;
-                        
+                    if(strncmp(buffer, "HTTP/1.1", 8) == 0 && strncmp(buffer, SERVER_RESPONSE_OK, 15) != 0) {
+                        strcpy(log3, MESSAGE_PROXTY_TO_CLIENT);
+                        strcat(log3, log4);
+                        strcat(log3, additionalLog);
+                        tog2 = 1;
                     }
-                    
-                    
-                    
                 }
                 
-                
-                
-                if(n>0)
-                {
+                if(n>0) {
                     
-                    
-                    if(popup==5)
-                    {
-                        popup=-1;
+                    if(showPopup == 5) {
+                        showPopup = false;
                         strcat(log,"\npopup is blocked\n");
-                        strcpy(buffer,"HTTP/1.1 404 NOT FOUND\r\n\r\n");
-                        
+                        strcpy(buffer, SERVER_RESPONSE_NOT_FOUND);
                     }
-                    
-                    
-                    
-                    
-                    if(pop==1) //팝업을 위해 클라이언트 소켓에 앞서 선언한 mesg를 보내주는 코드
-                    {
+                    if(startPopup == 1) {
                         send(client_sock,mesg,strlen(mesg),0);
-                        que=strstr(buffer,"\r\n\r\n"); //뒤에 오는 버퍼들은 \r\n\r\n으로 잘라 뒤에 보내줌
+                        parameter=strstr(buffer,"\r\n\r\n"); //뒤에 오는 버퍼들은 \r\n\r\n으로 잘라 뒤에 보내줌
                         // 이미 mesg에서 헤더파일 선언
-                        sprintf(buffer,"%s",que);
+                        sprintf(buffer,"%s",parameter);
                         
-                        pop=-1;
-                        
+                        startPopup=-1;
                     }
-                    
                     send(client_sock,buffer,n,0);
-                    
-                    
-                    
                 }
                 
                 
+            } while(n > 0);
+            
+            if(c == NULL) {
                 
+                file_size -= 4;
+                sprintf(additionalLog,"%ld",file_size);
                 
-            }while(n>0);
-            if(c==NULL)
-            {
-                file_size-=4;
-                sprintf(log2,"%ld",file_size);
-                
-                strcat(log,log2);
+                strcat(log,additionalLog);
                 strcat(log,"bytes");
                 strcat(log,"\n");
                 
-                strcat(log3,log2);
+                strcat(log3,additionalLog);
                 strcat(log3,"bytes\n");
                 strcat(log,log3);
-            }
-            else
-            {
-                
+            } else {
                 strcat(log,log3);
                 strcat(log,"\n");
-                
-                
             }
-            
-            
         }
     }
-    //Connect Method
-    else if(strncmp(t1, "CONNECT", 7) == 0) {
+    else if(strncmp(requestMethod, METHOD_CONNECT, 7) == 0) {
+        //Connect Method
         
         strcpy(log4,buffer);
         a=strtok(log4,"\r\n");
         strcat(log,a);
         strcat(log,"\n");
         
-        a=strtok(t2,":");
+        a=strtok(requestUrl,":");
         b=strtok(NULL," \t");
         sscanf(b,"%d",&httpsPortNumber);
         
@@ -450,11 +377,11 @@ void *runSocket(void *vargp) {
             perror("error");
         }
         else {
-            strcat(log, "[CLI <== PRX --- SRV]\n");
+            strcat(log, MESSAGE_PROXTY_TO_CLIENT);
             strcat(log, " > 200 Connection established\n");
             
-            strcat(log, "[CLI ==> PRX ==> SRV]\n");
-            strcat(log, "[CLI <== PRX <== SRV]\n");
+            strcat(log, MESSAGE_CLIENT_TO_PROXY);
+            strcat(log, MESSAGE_SERVER_TO_PROXY);
             strcat(log, " > Data is secured\n");
             
             sprintf(log4, "HTTP/1.1 200 Connection established\r\n\r\n");
@@ -491,41 +418,35 @@ void *runSocket(void *vargp) {
                 r = recv( server_sock, buf, sizeof( buf ), 0);
                 if ( r <= 0 )
                     break;
-                if(popup==5)
-                {    strcpy(buf,"HTTP1.1 404 NOT FOUND\r\n\r\n");
-                    popup=-1;
+                if(showPopup == 5) {
+                    strcpy(buf, SERVER_RESPONSE_NOT_FOUND);
+                    showPopup = -1;
                 }
-                r = send( client_sock, buf, r ,0);
+                r = send(client_sock, buf, r ,0);
                 if ( r <= 0 )
                     break;
             }
         }
-        
-        
-        
-        
-        
     }
     else {
-        strcat(log,t1);
+        strcat(log,requestMethod);
         strcat(log," ");
-        strcat(log,t2);
+        strcat(log,requestUrl);
         strcat(log,"\n");
         strcat(log,"ANOTHER METHOD IS NOT IMPLEMENTED\n");
-        send(client_sock,"400 : BAD REQUEST\n",18,0);
+        send(client_sock,"400: BAD REQUEST\n", 17, 0);
     }
     
     close(server_sock);
     close(client_sock);
-    strcat(log,"[CLI disconnected]\n");
-    strcat(log,"[SRV disconnected]\n");
+    strcat(log, CLIENT_DISCONNECTED);
+    strcat(log, SERVER_DISCONNECTED);
     close(sock);
     
     strcat(log,"-------------------------\n\n\n");
     printf("\n%s\n",log);
     
     exit(0);
-    
     return NULL;
 }
 
@@ -536,31 +457,31 @@ int main(int argc,char* argv[]) {
     printf("Starting proxy server - port: %s\n",argv[1]);
     
     // check options
-    if(argv[2]!= NULL) {
+    if(argv[2] != NULL) {
         
         if(argv[2] != NULL && strncmp(argv[2], "-comp", 5) == 0) {
-            zip=1;
+            enableComppresion = true;
         }
         else if(argv[2] != NULL && strncmp(argv[2], "-COMP", 5) == 0) {
-            zip=1;
+            enableComppresion = true;
         }
-        if(argv[2]!=NULL&&strncmp(argv[2], "-mt", 3) == 0) {
-            mt=1;
+        if(argv[2] != NULL && strncmp(argv[2], "-mt", 3) == 0) {
+            enableMultiThreading = true;
         }
-        else if(argv[2]!=NULL&&strncmp(argv[2], "-MT", 3) == 0) {
-            mt=1;
+        else if(argv[2] != NULL && strncmp(argv[2], "-MT", 3) == 0) {
+            enableMultiThreading = true;
         }
-        if(argv[3]!=NULL&&strncmp(argv[3], "-comp", 5) == 0) {
-            zip=1;
+        if(argv[3] != NULL && strncmp(argv[3], "-comp", 5) == 0) {
+            enableComppresion = true;
         }
         else if(argv[3]!=NULL&&strncmp(argv[3], "-COMP", 5) == 0) {
-            zip=1;
+            enableComppresion = true;
         }
-        if(argv[3]!=NULL&&strncmp(argv[3],"-mt",3) == 0) {
-            mt=1;
+        if(argv[3] != NULL && strncmp(argv[3], "-mt", 3) == 0) {
+            enableMultiThreading = true;
         }
         else if(argv[3] != NULL && strncmp(argv[3], "-MT", 3) == 0) {
-            mt=1;
+            enableMultiThreading = true;
         }
     }
     
@@ -600,17 +521,17 @@ int main(int argc,char* argv[]) {
             // close socket
             if(fork() != 0) {
                 close(client_sock);
-                co++;
+                packetCount++;
                 continue;
             }
             
             struct serverInfo *item = malloc(sizeof(struct serverInfo));
             item -> client_fd = client_sock;
             strcpy(item -> ip, inet_ntoa(cli_addr.sin_addr));
-            sprintf(item -> port, "%d", ntohs(cli_addr.sin_port)); //struct에 자료를 넣어줌
+            sprintf(item -> port, "%d", ntohs(cli_addr.sin_port));
             
             // Multi threading: create a new thread
-            if(mt==1) {
+            if(enableMultiThreading == true) {
                 pthread_create(&tid, NULL, runSocket, (void *)item);
                 sleep(1);
             }
